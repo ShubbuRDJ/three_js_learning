@@ -33,7 +33,7 @@ const parameter = {
     randomness: 0.2,
     randomnessPower: 3,
     insideColor: '#ff6030',
-    outsideColor: '#ff6030',
+    outsideColor: '#1b3984',
 }
 
 let galaxyGeometry = null;
@@ -52,6 +52,10 @@ const generateGalaxy = () => {
     galaxyGeometry = new THREE.BufferGeometry();
     const positions = new Float32Array(parameter.count * 3);
     const colors = new Float32Array(parameter.count * 3);
+
+    const colorInside = new THREE.Color(parameter.insideColor);
+    const colorOutside = new THREE.Color(parameter.outsideColor);
+
     for (let i = 0; i < parameter.count; i++) {
         const i3 = i * 3;
         const radius = Math.random() * parameter.radius;
@@ -63,10 +67,13 @@ const generateGalaxy = () => {
         positions[i3 + 0] = Math.cos(branchAngle + spinAngle) * radius + randomX;
         positions[i3 + 1] = randomY;
         positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
         // colors
-        colors[i3] = Math.random()
-        colors[i3+1] = Math.random()
-        colors[i3+2] = Math.random()
+        const mixColor = colorInside.clone();
+        mixColor.lerp(colorOutside, radius/parameter.radius);
+        colors[i3] = mixColor.r
+        colors[i3 + 1] = mixColor.g
+        colors[i3 + 2] = mixColor.b
     }
     galaxyGeometry.setAttribute(
         'position',
