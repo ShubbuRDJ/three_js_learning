@@ -9,6 +9,23 @@ import cannon from 'cannon';
  */
 const gui = new dat.GUI()
 
+
+/**
+ * Sound on coll ide event
+ */
+const hitSound = new Audio('/sounds/hit.mp3')
+const playHitSound = (collideEvent) => {
+    const collideIntensity = collideEvent.contact.getImpactVelocityAlongNormal();
+    if (collideIntensity > 2.5) {
+        hitSound.volume = Math.random() * 0.5
+        hitSound.currentTime = 0
+        hitSound.play()
+    }
+}
+
+
+
+
 /**
  * Base
  */
@@ -51,59 +68,39 @@ const environmentMapTexture = cubeTextureLoader.load([
  * 3. applyLocalForce:- same as applyForce but the coordinates are local to the body (0,0,0 would be center of the body)
  * 4. applyLocalImpulse:- same as applyImulse but the coordinates are local to the body.
  */
+
+
 // world
-const world = new cannon.World(); 
-world.gravity.set(0,-9.82,0)
+const world = new cannon.World();
+world.gravity.set(0, -9.82, 0)
+// for better performance
+world.broadphase = new cannon.SAPBroadphase(world);
+world.allowSleep = true;
 
 // physics material
 const defaultMaterial = new cannon.Material('default')
-const defaultContactMaterial = new cannon.ContactMaterial(defaultMaterial,defaultMaterial,{
-    friction:0.1,
-    restitution:0.7,
+const defaultContactMaterial = new cannon.ContactMaterial(defaultMaterial, defaultMaterial, {
+    friction: 0.1,
+    restitution: 0.7,
 })
-// world.addContactMaterial(defaultContactMaterial)
+world.addContactMaterial(defaultContactMaterial)
 world.defaultContactMaterial = defaultContactMaterial
 
-// sphere
-const sphereShape = new cannon.Sphere(0.5);
-const sphereBody = new cannon.Body({
-    mass:1,
-    position:new cannon.Vec3(0,3,0),
-    shape:sphereShape,
-})
-sphereBody.applyLocalForce(new cannon.Vec3(150,0,0),new cannon.Vec3(0,0,0))
-world.addBody(sphereBody)
-// floor
+
+
+// physics floor
 const floorShape = new cannon.Plane();
 const floorBody = new cannon.Body({
-    mass:0,
-    shape:floorShape,
+    mass: 0,
+    shape: floorShape,
 
 })
+
 floorBody.quaternion.setFromAxisAngle(
-    new cannon.Vec3(-1,0,0),
+    new cannon.Vec3(-1, 0, 0),
     Math.PI * 0.5
 )
 world.addBody(floorBody)
-
-
-
-
-/**
- * Test sphere
- */
-const sphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.5, 32, 32),
-    new THREE.MeshStandardMaterial({
-        metalness: 0.3,
-        roughness: 0.4,
-        envMap: environmentMapTexture,
-        envMapIntensity: 0.5
-    })
-)
-sphere.castShadow = true
-sphere.position.y = 0.5
-scene.add(sphere)
 
 /**
  * Floor
@@ -147,8 +144,7 @@ const sizes = {
     height: window.innerHeight
 }
 
-window.addEventListener('resize', () =>
-{
+window.addEventListener('resize', () => {
     // Update sizes
     sizes.width = window.innerWidth
     sizes.height = window.innerHeight
@@ -191,19 +187,145 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 const clock = new THREE.Clock()
 let oldElapseTime = 0;
 
-const tick = () =>
-{
+
+
+
+
+
+
+
+/**
+ * *************for handling multiple objects*********
+*/
+
+// Attay of object to update
+const arrayOfObjects = [];
+// utils function for create object
+const sphereGeometry = new THREE.SphereGeometry(1, 20, 20)
+const material = new THREE.MeshStandardMaterial({
+    metalness: 0.3,
+    roughness: 0.4,
+    envMap: environmentMapTexture,
+})
+
+const createSphere = (radius, position) => {
+    // THREE.js mesh 
+    const mesh = new THREE.Mesh(sphereGeometry, material)
+    mesh.scale.set(radius, radius, radius)
+    mesh.castShadow = true
+    mesh.position.copy(position)
+    scene.add(mesh);
+    // cannon.js body
+    const shape = new cannon.Sphere(radius);
+    const body = new cannon.Body({
+        mass: 1,
+        position: new cannon.Vec3(0, 3, 0),
+        shape,
+        material: defaultMaterial
+    })
+    body.position.copy(position);
+    world.addBody(body);
+    // save in object array to update
+    arrayOfObjects.push({ mesh, body })
+}
+
+createSphere(0.5, { x: 0, y: 3, z: 0 })
+
+
+
+// for creation of boxes
+
+
+const boxGeometry = new THREE.BoxGeometry(1, 1, 1)
+// const boxMaterial = new THREE.MeshStandardMaterial({
+//     metalness: 0.3,
+//     roughness: 0.4,
+//     envMap: environmentMapTexture,
+// })
+
+const createBox = (width, height, depth, position) => {
+    // THREE.js mesh 
+    const mesh = new THREE.Mesh(boxGeometry, material)
+    mesh.scale.set(width, height, depth)
+    mesh.castShadow = true
+    mesh.position.copy(position)
+    scene.add(mesh);
+    // cannon.js body
+    const shape = new cannon.Box(new cannon.Vec3(width * 0.5, height * 0.5, depth * 0.5));
+    const body = new cannon.Body({
+        mass: 1,
+        position: new cannon.Vec3(0, 3, 0),
+        shape,
+        material: defaultMaterial
+    })
+    body.position.copy(position);
+    body.addEventListener('collide', playHitSound);
+    world.addBody(body);
+    // save in object array to update
+    arrayOfObjects.push({ mesh, body })
+}
+
+
+const debugObj = {
+    createSphere: () => {
+        createSphere(
+            Math.random() * 0.5,
+            {
+                x: (Math.random() - 0.5) * 3,
+                y: 3,
+                z: (Math.random() - 0.5) * 3
+            }
+        )
+    },
+    createBox: () => {
+        createBox(
+            Math.random(),
+            Math.random(),
+            Math.random(),
+            {
+                x: (Math.random() - 0.5) * 3,
+                y: 3,
+                z: (Math.random() - 0.5) * 3
+            }
+        )
+    }
+}
+gui.add(debugObj, 'createSphere');
+gui.add(debugObj, 'createBox');
+
+
+
+
+
+
+
+
+const tick = () => {
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - oldElapseTime;
     oldElapseTime = elapsedTime;
 
 
-    
-    // update physics world
-    sphereBody.applyForce(new cannon.Vec3(-0.5,0,0),sphereBody.position)
 
-    world.step(1/60,deltaTime,3)
-    sphere.position.copy(sphereBody.position)
+    // update physics world for single object
+    // sphereBody.applyForce(new cannon.Vec3(-0.5,0,0),sphereBody.position)
+
+    world.step(1 / 60, deltaTime, 3)
+    // for single object
+    // sphere.position.copy(sphereBody.position)
+
+
+
+
+    // handle updation of multiple objects
+    for (const obj of arrayOfObjects) {
+        obj.mesh.position.copy(obj.body.position)
+        // for rotation of boxes on creation
+        obj.mesh.quaternion.copy(obj.body.quaternion)
+    }
+
+
+
 
 
     // Update controls
