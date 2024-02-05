@@ -16,8 +16,8 @@ const gui = new dat.GUI()
 const hitSound = new Audio('/sounds/hit.mp3')
 const playHitSound = (collideEvent) => {
     const collideIntensity = collideEvent.contact.getImpactVelocityAlongNormal();
-    if (collideIntensity > 2.5) {
-        hitSound.volume = Math.random() * 0.5
+    if (collideIntensity > 1.5) {
+        hitSound.volume = Math.random();
         hitSound.currentTime = 0
         hitSound.play()
     }
@@ -62,12 +62,62 @@ const environmentMapTexture = cubeTextureLoader.load([
  * 2. How much time passed since the last step
  * 3. How much iterations the world can apply to catch up with a potential delay
  * 
- * ** force
+ * ** ******************force*********************
  * 1. applyForce:- apply a force from a specified point in space(not necessary on the body's surface) like the wind,a small push on a domino or a strong force on an angry bird.
  * 2. applyImpulse:- like applyforce but instead of adding to the force, will add to the velocity.
  * 3. applyLocalForce:- same as applyForce but the coordinates are local to the body (0,0,0 would be center of the body)
  * 4. applyLocalImpulse:- same as applyImulse but the coordinates are local to the body.
+ * 
+ * 
+ * *******************Constraints***************************
+ * constraints enable constraints between two bodies
+ * 1. HingeConstraint - acts like a door hinge
+ * 2. DistanceConstraints - forces the bodies to keep a distance between each other.
+ * 3. LockContraint- merges the bodies like if they were one place.
+ * 4. PointToPointContraint - glues the bodies to a specific point.
+ * 
+ * 
+ * 
+ *  * *******************Workers***************************
+ * the components of your computer doing the physics in the cpu.
+ * Currently, everything is done by the same thread in your cpu and that thread can quickly overloaded 
+ * the solution is to use workers.
+ * 
+ * workers let you put a part of your cde in a different thread to spread the load 
+ * you can then send and recieve data from that code and considerably improve performances 
  */
+
+
+
+
+
+
+/**
+ * Cannon.js hasn't been updated for years
+ * ********** cannon-es.js********
+ * So we use the cannon-es.js in place of cannon.js
+ * because this is a improved version of cannon.js
+ * npm install --save cannon-es@0.15.1
+ * 
+ * *********** Ammo.js *************
+ * Ammo.js is harder to use and to implement in your project but has more features
+ * written in c++.
+ * 
+ * 
+ * ***************Physijs *************
+ * implementiation of physics in a Three.js project 
+ * it uses Ammo.js and supports workers natively
+ * Instead of creating the Three.js object and the physics object, you create both simultaneously
+ * box = new Physicsjs.BoxMesh(
+ * new Three.cudeGeometry(5,5,5),
+ * new Three.MeshBasicMaterial({color:0xff00ff})
+ * )
+ * scene.add(box)
+ */
+
+
+
+
 
 
 // world
@@ -288,10 +338,28 @@ const debugObj = {
                 z: (Math.random() - 0.5) * 3
             }
         )
+    },
+    reset: () => {
+        for (const object of arrayOfObjects) {
+            // remove event listener 
+            object.body.removeEventListener('collide', playHitSound)
+            // remove body
+            world.remove(object.body)
+            // remove mesh
+            scene.remove(object.mesh)
+        }
+        // *********empty the object array************
+        // for this we should intialize the array with "let" keyword.
+        // arrayOfObjects = [] 
+        //or
+        // arrayOfObjects.splice(0,arrayOfObjects.length)
+        //or
+        arrayOfObjects.length = 0;
     }
 }
 gui.add(debugObj, 'createSphere');
 gui.add(debugObj, 'createBox');
+gui.add(debugObj, 'reset');
 
 
 
