@@ -7,14 +7,6 @@ import * as dat from 'lil-gui'
 
 
 
-
-
-
-
-
-
-
-
 /**
  * *************** Imported models**************
  * To create complex shapes, we better use a dedicated 3D software 
@@ -59,6 +51,11 @@ import * as dat from 'lil-gui'
  * Add the DracoLoader
  * 
  *  
+ * 
+ * ******** for animation *****
+ * the loaded gltf object contains a animations property composed of multiple AnimationCLip
+ * 
+ * 
  */
 
 
@@ -98,18 +95,31 @@ dracoLoader.setDecoderPath('/draco/')
 /**
  * GLTF loader to load the models.
  */
+
+let mixer = null;
+
 const gltfLoader = new GLTFLoader();
 gltfLoader.setDRACOLoader(dracoLoader);
 gltfLoader.load(
     // 'models/Duck/glTF/Duck.gltf',
-    // 'models/FlightHelmet/glTF/FlightHelmet.gltf',
-    'models/Duck/glTF-Draco/Duck.gltf',
-    (gltf)=>{
+    // 'models/FlightHelmet/glTF/FlightHelmet.glt f',
+    // 'models/Duck/glTF-Draco/Duck.gltf',
+    'models/Fox/glTF/Fox.gltf',
+    (gltf) => {
+
+
+        // for animation 
+        mixer = new THREE.AnimationMixer(gltf.scene);
+        const action = mixer.clipAction(gltf.animations[1]);
+        action.play();
+
+
         // scene.add(gltf.scene.children[0])
         const children = [...gltf.scene.children]
         // for(const child of children){
         //     scene.add(child)
         // }
+        gltf.scene.scale.set(0.025, 0.025, 0.025)
         scene.add(gltf.scene)
     }
 )
@@ -209,6 +219,11 @@ const tick = () => {
 
     // Update controls
     controls.update()
+
+    // for animation
+    if (mixer) {
+        mixer.update(deltaTime)
+    }
 
     // Render
     renderer.render(scene, camera)
